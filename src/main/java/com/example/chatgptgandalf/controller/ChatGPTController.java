@@ -89,7 +89,7 @@ public class ChatGPTController {
 
         ChatResponse response = webClient.post()
                 .contentType(MediaType.APPLICATION_JSON)
-                .headers(h -> h.setBearerAuth("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"))
+                .headers(h -> h.setBearerAuth("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"))
                 .bodyValue(chatRequest)
                 .retrieve()
                 .bodyToMono(ChatResponse.class)
@@ -98,6 +98,11 @@ public class ChatGPTController {
         List<Choice> choices = response.getChoices();
         Message assistantResponse = choices.get(0).getMessage();
         chatHistory.add(assistantResponse);
+        if(chatHistory.size() > 10)
+        {
+            chatHistory.removeFirst();
+            chatHistory.removeFirst();
+        }
         return choices;
     }
 
