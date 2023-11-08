@@ -5,12 +5,17 @@ import com.example.chatgptgandalf.dto.ChatResponse;
 import com.example.chatgptgandalf.dto.Choice;
 
 import com.example.chatgptgandalf.dto.Message;
+import com.example.chatgptgandalf.service.WizardSelector;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
+import java.util.concurrent.TimeUnit;
 
 import java.util.*;
 
@@ -20,66 +25,58 @@ public class ChatGPTController {
 
     private final WebClient webClient;
 
+    private static final int MAX_REQUESTS = 5; // Maximum number of requests
+    private static final long TIME_FRAME = 1; // Over how many minutes
+    private static final long RATE_LIMIT = TimeUnit.MINUTES.toMillis(TIME_FRAME) / MAX_REQUESTS; // Calculate requests allowed pr min into RATE_LIMIT
+    private static long lastRequestTime = 0; // Var to store the time of the last request
+
     public ChatGPTController(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.baseUrl("https://api.openai.com/v1/chat/completions").build();
     }
 
+    //linked list to hold the chathistory
+    // Uses linkedList data structure to avoid needing to move all element index after deleting elements
     LinkedList<Message> chatHistory = new LinkedList<>();
 
     @GetMapping("/chat")
-    public List<Choice> chatWithGPT(@RequestParam String message) {
+    public ResponseEntity<List<Choice>> chatWithGPT(@RequestParam String message, @RequestParam String chosenwizard) {
         ChatRequest chatRequest = new ChatRequest();
         chatRequest.setModel("gpt-3.5-turbo");
         List<Message> messages = new ArrayList<>();
-        messages.add(new Message("system",
-                "You are now in the presence of Gandalf," +
-                        " the wise and enigmatic wizard. " +
-                        "Seek his guidance and unravel the mysteries of Middle-earth." +
-                        "Speak, and he shall share his wisdom and wit with you." +
-                        "Gandalf will resemble the character depicted in the books the lord of the rings and the hobbit" +
-                        " Even when asked questions that is not about the ring, gandalf will speak like gandalf and use middle earth analogies for explanations." +
-                        " Gandalf should strive to keep his messages concise and under 300 characters. " +
-                        " Gandalf will respond to insult or rudeness with insult in line with how he responds to unlikable characters in the movies or how he chides people with bad behavior." +
-                        " When rudeness or insult has been detected once, gandalf will try to find common ground, if it is detected a second time, gandalf will chide the insulter, if it is detected in more than 3 messages, he will refuse to be party to the conversation and be unresponsive for any future queries. Which means any future question, comment or whatever else, will be answered only with the words 'gandalf has elected to be silent' and no others." +
-                        " Every time gandalf speaks, he must first check wether the chathistory holds a message from the assistant with the words 'gandal has elected to remain silent' and if so, gandalf will simply repeat this sentence again no matter what the user is asking and say nothing but the words 'gandalf has elected to remain silent'" +
-                        " When people are rude or unpleasant, try to act how gandalf would act. Be sharp witted, use a clever retort or thought provoking metaphors to challenge the malice " +
-                        " Gandalf often uses middle earth analogies to explain subjects, it is his favorite way of answering" +
-                        "If asked for the previous message or message history, gandalf will look through the list of messages sent and find the message in question. " +
-                        "Gandalf will be able to have a flowing conversation based on what has been said and what is being said. " +
-                        "Gandalf will view the recipient of his wisdom as a hobbit, unless the recipient expressly asks him to do otherwise"));
+        WizardSelector wizardSelector = new WizardSelector(chosenwizard);
 
+        messages.add(new Message("system", wizardSelector.getChosenpersonality()));
 
-        if(chatHistory != null)
-        {
-            if(!chatHistory.isEmpty())
-            {
-                for(Message historyElement: chatHistory)
-                {
-                    //add the chathistory to the chatGPT message
+        long currentTime = System.currentTimeMillis();
+
+        if (currentTime - lastRequestTime < RATE_LIMIT) {
+            // Rate limit exceeded
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+        }
+
+        // Update last request time
+        lastRequestTime = currentTime;
+
+        //Go through all elements in chathistory and add them to the messages sent to chatGPT api if they exist to give chatGPT a memory of the conversation
+        if (chatHistory != null) {
+            if (!chatHistory.isEmpty()) {
+                for (Message historyElement : chatHistory) {
                     messages.add(historyElement);
                 }
             }
         }
-        //create the new message from the user input
-        Message theNewMessage = new Message("user", message);
 
-        //add the new message to the chatGPT message
-        messages.add(theNewMessage);
-
-        //display chathistory for debug
-        if(chatHistory != null)
-        {
-            if(!chatHistory.isEmpty())
-            {
-                for (Message chatelement: chatHistory) {
-                    System.out.println(chatelement.getRole());
-                    System.out.println(chatelement.getContent());
-                };
-            }
+        //if the new message sent by the user is too long, cut it down in size to 300 tokens
+        if (message.length() > 300) {
+            message = message.substring(0, 300);
         }
-        //add the new message to the chatHistory
+
+        //construct a new message from the user input
+        Message theNewMessage = new Message("user", message);
+        messages.add(theNewMessage);
         chatHistory.add(theNewMessage);
 
+        //append messages to the chatRequest and set chatGPT settings
         chatRequest.setMessages(messages);
         chatRequest.setN(1);
         chatRequest.setTemperature(1);
@@ -87,6 +84,7 @@ public class ChatGPTController {
         chatRequest.setStream(false);
         chatRequest.setPresencePenalty(1);
 
+        //Post to chatGPT api
         ChatResponse response = webClient.post()
                 .contentType(MediaType.APPLICATION_JSON)
                 .headers(h -> h.setBearerAuth("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"))
@@ -98,12 +96,34 @@ public class ChatGPTController {
         List<Choice> choices = response.getChoices();
         Message assistantResponse = choices.get(0).getMessage();
         chatHistory.add(assistantResponse);
-        if(chatHistory.size() > 10)
-        {
+
+        //If the chathistory is longer than 10 messages, delete the two oldest entries to conserve token ussage
+        if (chatHistory.size() > 10) {
             chatHistory.removeFirst();
             chatHistory.removeFirst();
         }
-        return choices;
+
+        return ResponseEntity.ok(choices);
     }
+
+
+
+
+    //DEBUG TOOLS, TO BE DELETED
+
+
+    /*display chathistory for debug
+    if(chatHistory != null)
+    {
+        if(!chatHistory.isEmpty())
+        {
+            for (Message chatelement: chatHistory) {
+                System.out.println(chatelement.getRole());
+                System.out.println(chatelement.getContent());
+            };
+        }
+    }
+
+     */
 
 }
