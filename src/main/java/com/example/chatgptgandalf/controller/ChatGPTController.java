@@ -30,6 +30,8 @@ public class ChatGPTController {
     private static final long RATE_LIMIT = TimeUnit.MINUTES.toMillis(TIME_FRAME) / MAX_REQUESTS; // Calculate requests allowed pr min into RATE_LIMIT
     private static long lastRequestTime = 0; // Var to store the time of the last request
 
+    private String formerWizard = "";
+
     public ChatGPTController(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.baseUrl("https://api.openai.com/v1/chat/completions").build();
     }
@@ -45,7 +47,19 @@ public class ChatGPTController {
         List<Message> messages = new ArrayList<>();
         WizardSelector wizardSelector = new WizardSelector(chosenwizard);
 
+        //if the selected wizard is another than the former wizard, delete the chathistory
+        if(!chosenwizard.equals(formerWizard) && chatHistory != null && !formerWizard.isEmpty())
+        {
+            //only clear the chathistory if it is not allready empty
+            if(!chatHistory.isEmpty())
+            {
+                chatHistory.clear();
+            }
+        }
+
         messages.add(new Message("system", wizardSelector.getChosenpersonality()));
+
+        System.out.println(wizardSelector.getChosenpersonality());
 
         long currentTime = System.currentTimeMillis();
 
@@ -87,7 +101,7 @@ public class ChatGPTController {
         //Post to chatGPT api
         ChatResponse response = webClient.post()
                 .contentType(MediaType.APPLICATION_JSON)
-                .headers(h -> h.setBearerAuth("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"))
+                .headers(h -> h.setBearerAuth("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"))
                 .bodyValue(chatRequest)
                 .retrieve()
                 .bodyToMono(ChatResponse.class)
@@ -102,6 +116,8 @@ public class ChatGPTController {
             chatHistory.removeFirst();
             chatHistory.removeFirst();
         }
+
+        formerWizard = chosenwizard;
 
         return ResponseEntity.ok(choices);
     }
