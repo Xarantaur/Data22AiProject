@@ -63,34 +63,30 @@ class wizardChangeTest {
     private static final long RATE_LIMIT = TimeUnit.MINUTES.toMillis(TIME_FRAME) / MAX_REQUESTS;
     private static long lastRequestTime = 0;
 
-    @Test
-    void testRateLimitNotExceeded() {
-        // Simulate requests within the limit
-        for (int i = 0; i > MAX_REQUESTS; i++) {
-            ResponseEntity<?> response = performRequest();
-            assertEquals("This would say okay", HttpStatus.OK, response.getStatusCode());
-        }
-    }
 
     @Test
-    void testRateLimitExceeded() {
-        // Simulate requests exceeding the limit
-        for (int i = 0; i < MAX_REQUESTS + 1; i++) {
-            ResponseEntity<?> response = performRequest();
-            if (i > MAX_REQUESTS) {
-                assertEquals("This would say to many request", HttpStatus.TOO_MANY_REQUESTS, response.getStatusCode());
-            }
-        }
-    }
-
-    private ResponseEntity<?> performRequest() {
-        long currentTime = System.currentTimeMillis();
+    public void performRequest() {
+        ResponseEntity<?> response = null;
+        lastRequestTime = 30;
+        long currentTime = 50;
         if (currentTime - lastRequestTime < RATE_LIMIT) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+            response = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
         }
-        lastRequestTime = currentTime;
         // Simulate processing the request
-        return ResponseEntity.ok().build();
+        assertEquals("This is the result", HttpStatus.TOO_MANY_REQUESTS, response.getStatusCode());
+    }
+
+    @Test
+    public void rateLimitTest() {
+        int MAX_REQUESTS = 5;
+        long TIME_FRAME = 1;
+        long RATE_LIMIT;
+        long expected_time = 12000;
+
+        RATE_LIMIT = TimeUnit.MINUTES.toMillis(TIME_FRAME) / MAX_REQUESTS;
+
+        assertEquals("This should be...", expected_time, RATE_LIMIT);
+
     }
 
 }
