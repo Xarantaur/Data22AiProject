@@ -122,24 +122,4 @@ public class ChatGPTController {
         return ResponseEntity.ok(choices);
     }
 
-
-
-
-    //DEBUG TOOLS, TO BE DELETED
-
-
-    /*display chathistory for debug
-    if(chatHistory != null)
-    {
-        if(!chatHistory.isEmpty())
-        {
-            for (Message chatelement: chatHistory) {
-                System.out.println(chatelement.getRole());
-                System.out.println(chatelement.getContent());
-            };
-        }
-    }
-
-     */
-
 }
