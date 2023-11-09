@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.springframework.test.util.AssertionErrors.assertEquals;
 
-class wizardChangeTest {
+class ControllerTest {
 
     @Test
     public void wizardChangeBooleanTest()
