@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.springframework.test.util.AssertionErrors.assertEquals;
 
-class wizardChangeTest {
+class ControllerTest {
 
     @Test
     public void wizardChangeBooleanTest()
@@ -72,6 +72,7 @@ class wizardChangeTest {
         if (currentTime - lastRequestTime < RATE_LIMIT) {
             response = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
         }
+        lastRequestTime = currentTime;
         // Simulate processing the request
         assertEquals("This is the result", HttpStatus.TOO_MANY_REQUESTS, response.getStatusCode());
     }
