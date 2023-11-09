@@ -6,6 +6,7 @@ import com.example.chatgptgandalf.dto.Choice;
 
 import com.example.chatgptgandalf.dto.Message;
 import com.example.chatgptgandalf.service.WizardSelector;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +33,9 @@ public class ChatGPTController {
 
     private String formerWizard = "";
 
+    @Value("${spring.datasource.username}")
+    private String GPT_API_KEY;
+
     public ChatGPTController(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.baseUrl("https://api.openai.com/v1/chat/completions").build();
     }
@@ -56,6 +60,8 @@ public class ChatGPTController {
                 chatHistory.clear();
             }
         }
+
+        System.out.println();
 
         messages.add(new Message("system", wizardSelector.getChosenpersonality()));
 
@@ -98,10 +104,12 @@ public class ChatGPTController {
         chatRequest.setStream(false);
         chatRequest.setPresencePenalty(1);
 
+
+
         //Post to chatGPT api
         ChatResponse response = webClient.post()
                 .contentType(MediaType.APPLICATION_JSON)
-                .headers(h -> h.setBearerAuth("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"))
+                .headers(h -> h.setBearerAuth(GPT_API_KEY))
                 .bodyValue(chatRequest)
                 .retrieve()
                 .bodyToMono(ChatResponse.class)
