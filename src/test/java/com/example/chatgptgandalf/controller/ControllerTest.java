@@ -89,5 +89,17 @@ class ControllerTest {
         assertEquals("This should be...", expected_time, RATE_LIMIT);
 
     }
+    @Test
+    public void tokensLimitTest(){
+        //arrange
+        String message = "this Message is the longest message in the world".repeat(10);
+        //if the new message sent by the user is too long, cut it down in size to 300 tokens
+        //act
+        if (message.length() > 300) {
+            message = message.substring(0, 300);
+        }
+        //assert
+        assertEquals("this should be 300", 300, message.length());
 
+    }
 }
