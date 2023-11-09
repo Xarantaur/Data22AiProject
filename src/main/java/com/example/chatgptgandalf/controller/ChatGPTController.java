@@ -112,7 +112,7 @@ public class ChatGPTController {
         chatHistory.add(assistantResponse);
 
         //If the chathistory is longer than 10 messages, delete the two oldest entries to conserve token ussage
-        if (chatHistory.size() > 10) {
+        if (chatHistory.size() >= 10) {
             chatHistory.removeFirst();
             chatHistory.removeFirst();
         }
