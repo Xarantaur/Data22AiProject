@@ -84,7 +84,7 @@ class wizardChangeTest {
     }
 
     private ResponseEntity<?> performRequest() {
-        long currentTime = System.currentTimeMillis();
+        long currentTime = System.currentTimeMillis(); //= 50
         if (currentTime - lastRequestTime < RATE_LIMIT) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
         }
